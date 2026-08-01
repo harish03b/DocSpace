@@ -7,8 +7,10 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "client": "npm --prefix client run dev",
+  "server": "npm --prefix server run dev",
+  "dev": "concurrently \"npm run client\" \"npm run server\""
+},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/harish03b/DocSpace.git"
