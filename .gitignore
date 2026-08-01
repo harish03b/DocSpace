@@ -56,3 +56,6 @@ build/
 # ==========================
 *.pid
 *.seed
+
+# Local Documentation
+docs/
