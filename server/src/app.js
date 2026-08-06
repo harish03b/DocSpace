@@ -6,7 +6,7 @@ import { authRoutes } from "./modules/auth/index.js";
 import { env } from "./config/env.js";
 import mongoose from "mongoose";
 import ApiResponse from "./shared/response/api-response.js";
-
+import { userRoutes } from "./modules/user/index.js";
 import notFoundMiddleware from "./middleware/not-found.middleware.js";
 import errorMiddleware from "./middleware/error.middleware.js";
 
@@ -32,6 +32,7 @@ app.get("/", (req, res) => {
   });
 });
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/users", userRoutes);
 app.get("/health", (req, res) => {
   return ApiResponse.success(
     res,
