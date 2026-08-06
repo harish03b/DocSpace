@@ -2,9 +2,9 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-
+import { authRoutes } from "./modules/auth/index.js";
 import { env } from "./config/env.js";
-
+import mongoose from "mongoose";
 import ApiResponse from "./shared/response/api-response.js";
 
 import notFoundMiddleware from "./middleware/not-found.middleware.js";
@@ -31,15 +31,20 @@ app.get("/", (req, res) => {
     status: "Running",
   });
 });
-
+app.use("/api/v1/auth", authRoutes);
 app.get("/health", (req, res) => {
   return ApiResponse.success(
     res,
-    "Server is running successfully",
     {
       environment: env.nodeEnv,
+      database:
+        mongoose.connection.readyState === 1
+          ? "connected"
+          : "disconnected",
+      uptime: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
-    }
+    },
+    "Server is healthy"
   );
 });
 
