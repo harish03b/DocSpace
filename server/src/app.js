@@ -9,7 +9,7 @@ import ApiResponse from "./shared/response/api-response.js";
 import { userRoutes } from "./modules/user/index.js";
 import notFoundMiddleware from "./middleware/not-found.middleware.js";
 import errorMiddleware from "./middleware/error.middleware.js";
-
+import { documentRoutes } from "./modules/document/index.js";
 const app = express();
 
 app.use(helmet());
@@ -33,6 +33,7 @@ app.get("/", (req, res) => {
 });
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/documents", documentRoutes);
 app.get("/health", (req, res) => {
   return ApiResponse.success(
     res,
