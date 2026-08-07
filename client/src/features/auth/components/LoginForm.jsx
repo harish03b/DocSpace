@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -10,10 +11,10 @@ import {
   Stack,
   TextField,
   Typography,
-  Alert,
 } from "@mui/material";
 
 import { authService } from "../index";
+import { setToken } from "../../../utils/storage";
 
 const LoginForm = () => {
   const navigate = useNavigate();
@@ -24,14 +25,15 @@ const LoginForm = () => {
   });
 
   const [loading, setLoading] = useState(false);
-
   const [error, setError] = useState("");
 
   const handleChange = (event) => {
-    setFormData({
-      ...formData,
-      [event.target.name]: event.target.value,
-    });
+    const { name, value } = event.target;
+
+    setFormData((previousData) => ({
+      ...previousData,
+      [name]: value,
+    }));
   };
 
   const handleSubmit = async (event) => {
@@ -39,20 +41,29 @@ const LoginForm = () => {
 
     try {
       setLoading(true);
-
       setError("");
 
       const response = await authService.login(formData);
 
-      localStorage.setItem(
-        "token",
-        response.data.token
-      );
+      // Temporary verification of the backend response.
+      // Do not share the actual token if it appears here.
+      console.log("LOGIN RESPONSE:", response);
+
+      const token = response?.message?.token;
+
+      if (!token) {
+        throw new Error("Login succeeded but no token was returned.");
+      }
+
+      setToken(token);
 
       navigate("/dashboard");
     } catch (error) {
+      console.error("LOGIN ERROR:", error);
+
       setError(
         error.response?.data?.message ||
+          error.message ||
           "Login failed."
       );
     } finally {
@@ -67,6 +78,7 @@ const LoginForm = () => {
           minHeight: "100vh",
           display: "flex",
           alignItems: "center",
+          justifyContent: "center",
         }}
       >
         <Card
@@ -79,7 +91,7 @@ const LoginForm = () => {
           <CardContent sx={{ p: 5 }}>
             <form onSubmit={handleSubmit}>
               <Stack spacing={3}>
-                <Box textAlign="center">
+                <Box sx={{ textAlign: "center" }}>
                   <Typography
                     variant="h4"
                     fontWeight={700}
@@ -101,9 +113,11 @@ const LoginForm = () => {
                 <TextField
                   label="Email"
                   name="email"
+                  type="email"
                   value={formData.email}
                   onChange={handleChange}
                   fullWidth
+                  required
                 />
 
                 <TextField
@@ -113,21 +127,21 @@ const LoginForm = () => {
                   value={formData.password}
                   onChange={handleChange}
                   fullWidth
+                  required
                 />
 
                 <Button
                   type="submit"
                   variant="contained"
                   size="large"
+                  fullWidth
                   disabled={loading}
                 >
-                  {loading
-                    ? "Logging in..."
-                    : "Login"}
+                  {loading ? "Logging in..." : "Login"}
                 </Button>
 
                 <Typography
-                  textAlign="center"
+                  sx={{ textAlign: "center" }}
                   color="text.secondary"
                 >
                   Don't have an account?
