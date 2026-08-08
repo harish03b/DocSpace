@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 
 import {
   Alert,
+  Box,
   Button,
   Card,
   CardContent,
+  Chip,
   CircularProgress,
   Stack,
   Typography,
@@ -13,10 +15,9 @@ import {
 
 import { documentService } from "./index";
 
-const DocumentList = () => {
+const DocumentList = ({ documents, setDocuments }) => {
   const navigate = useNavigate();
 
-  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
@@ -90,6 +91,40 @@ const DocumentList = () => {
     }
   };
 
+  const getPreview = (content) => {
+    if (!content?.trim()) {
+      return "No content yet.";
+    }
+
+    const cleanedContent = content
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (cleanedContent.length <= 140) {
+      return cleanedContent;
+    }
+
+    return `${cleanedContent.substring(0, 140)}...`;
+  };
+
+  const formatDate = (date) => {
+    if (!date) {
+      return "Date unavailable";
+    }
+
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "Date unavailable";
+    }
+
+    return parsedDate.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
   if (loading) {
     return (
       <Stack
@@ -113,9 +148,31 @@ const DocumentList = () => {
       )}
 
       {documents.length === 0 ? (
-        <Typography color="text.secondary">
-          No documents found.
-        </Typography>
+        <Card>
+          <CardContent>
+            <Stack
+              spacing={1}
+              sx={{
+                alignItems: "center",
+                py: 4,
+              }}
+            >
+              <Typography
+                variant="h6"
+                fontWeight={600}
+              >
+                No documents found
+              </Typography>
+
+              <Typography
+                color="text.secondary"
+                align="center"
+              >
+                Create your first document to get started.
+              </Typography>
+            </Stack>
+          </CardContent>
+        </Card>
       ) : (
         documents.map((document) => (
           <Card
@@ -125,55 +182,126 @@ const DocumentList = () => {
             }
             sx={{
               cursor: "pointer",
-              transition: "0.2s",
+              borderRadius: 3,
+              transition:
+                "transform 0.2s, box-shadow 0.2s",
               "&:hover": {
                 transform: "translateY(-2px)",
                 boxShadow: 4,
               },
             }}
           >
-            <CardContent>
-              <Stack
-                direction="row"
-                sx={{
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  gap: 2,
-                }}
-              >
-                <Stack spacing={1}>
-                  <Typography
-                    variant="h6"
-                    fontWeight={600}
-                  >
-                    {document.title}
-                  </Typography>
+            <CardContent sx={{ p: 3 }}>
+              <Stack spacing={2}>
+                <Stack
+                  direction={{
+                    xs: "column",
+                    sm: "row",
+                  }}
+                  sx={{
+                    justifyContent:
+                      "space-between",
+                    alignItems: {
+                      xs: "stretch",
+                      sm: "flex-start",
+                    },
+                    gap: 2,
+                  }}
+                >
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography
+                      variant="h6"
+                      fontWeight={700}
+                      sx={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {document.title}
+                    </Typography>
 
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        mt: 1,
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      {getPreview(document.content)}
+                    </Typography>
+                  </Box>
+
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                      flexShrink: 0,
+                    }}
                   >
-                    {document.content ||
-                      "No content yet."}
-                  </Typography>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        navigate(
+                          `/documents/${document._id}`
+                        );
+                      }}
+                    >
+                      Open
+                    </Button>
+
+                    <Button
+                      color="error"
+                      variant="outlined"
+                      size="small"
+                      disabled={
+                        deletingId === document._id
+                      }
+                      onClick={(event) =>
+                        handleDelete(
+                          event,
+                          document._id
+                        )
+                      }
+                    >
+                      {deletingId === document._id
+                        ? "Deleting..."
+                        : "Delete"}
+                    </Button>
+                  </Stack>
                 </Stack>
 
-                <Button
-                  color="error"
-                  variant="outlined"
-                  size="small"
-                  disabled={deletingId === document._id}
-                  onClick={(event) =>
-                    handleDelete(
-                      event,
-                      document._id
-                    )
-                  }
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                  }}
                 >
-                  {deletingId === document._id
-                    ? "Deleting..."
-                    : "Delete"}
-                </Button>
+                  <Chip
+                    size="small"
+                    label={
+                      document.content?.trim()
+                        ? "Has content"
+                        : "Empty"
+                    }
+                  />
+
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                  >
+                    Updated{" "}
+                    {formatDate(
+                      document.updatedAt ||
+                        document.createdAt
+                    )}
+                  </Typography>
+                </Stack>
               </Stack>
             </CardContent>
           </Card>

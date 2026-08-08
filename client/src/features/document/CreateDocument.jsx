@@ -49,9 +49,9 @@ const CreateDocument = ({ onCreated }) => {
         content: "",
       });
 
-      if (onCreated) {
-        onCreated();
-      }
+     if (onCreated) {
+  onCreated(response?.message);
+}
     } catch (error) {
       console.error("CREATE DOCUMENT ERROR:", error);
 
