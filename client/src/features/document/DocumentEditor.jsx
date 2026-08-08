@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -5,7 +6,10 @@ import {
   Alert,
   Box,
   Button,
+  Card,
+  CardContent,
   CircularProgress,
+  Divider,
   Stack,
   TextField,
   Typography,
@@ -17,6 +21,8 @@ const DocumentEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
+  const [document, setDocument] = useState(null);
+
   const [formData, setFormData] = useState({
     title: "",
     content: "",
@@ -24,46 +30,94 @@ const DocumentEditor = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const fetchDocument = async () => {
-    try {
-      setLoading(true);
-      setError("");
+  const [isDirty, setIsDirty] = useState(false);
 
-      const response =
-        await documentService.getDocumentById(id);
-
-      console.log("DOCUMENT DETAILS RESPONSE:", response);
-
-      const document = response?.message;
-
-      if (!document) {
-        throw new Error("Document not found.");
-      }
-
-      setFormData({
-        title: document.title || "",
-        content: document.content || "",
-      });
-    } catch (error) {
-      console.error("DOCUMENT FETCH ERROR:", error);
-
-      setError(
-        error.response?.data?.message ||
-          error.message ||
-          "Failed to load document."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  /*
+   * Load document
+   */
   useEffect(() => {
+    const fetchDocument = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        setSuccess("");
+
+        const response =
+          await documentService.getDocumentById(id);
+
+        console.log(
+          "DOCUMENT DETAILS RESPONSE:",
+          response
+        );
+
+        const documentData = response?.message;
+
+        if (!documentData) {
+          throw new Error("Document not found.");
+        }
+
+        setDocument(documentData);
+
+        setFormData({
+          title: documentData.title || "",
+          content: documentData.content || "",
+        });
+
+        setIsDirty(false);
+      } catch (error) {
+        console.error(
+          "DOCUMENT DETAILS ERROR:",
+          error
+        );
+
+        setError(
+          error.response?.data?.message ||
+            error.message ||
+            "Failed to load document."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchDocument();
   }, [id]);
 
+  /*
+   * Protect against browser refresh / tab close
+   * when there are unsaved changes.
+   */
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      if (!isDirty) {
+        return;
+      }
+
+      event.preventDefault();
+
+      event.returnValue = "";
+    };
+
+    window.addEventListener(
+      "beforeunload",
+      handleBeforeUnload
+    );
+
+    return () => {
+      window.removeEventListener(
+        "beforeunload",
+        handleBeforeUnload
+      );
+    };
+  }, [isDirty]);
+
+  /*
+   * Handle form changes
+   */
   const handleChange = (event) => {
     const { name, value } = event.target;
 
@@ -72,11 +126,20 @@ const DocumentEditor = () => {
       [name]: value,
     }));
 
+    setIsDirty(true);
     setSuccess("");
+    setError("");
   };
 
+  /*
+   * Save document
+   */
   const handleSave = async (event) => {
     event.preventDefault();
+
+    if (!isDirty) {
+      return;
+    }
 
     try {
       setSaving(true);
@@ -89,11 +152,36 @@ const DocumentEditor = () => {
           formData
         );
 
-      console.log("UPDATE DOCUMENT RESPONSE:", response);
+      console.log(
+        "DOCUMENT UPDATE RESPONSE:",
+        response
+      );
 
-      setSuccess("Document saved successfully.");
+      const updatedDocument = response?.message;
+
+      if (!updatedDocument) {
+        throw new Error(
+          "Document update response was invalid."
+        );
+      }
+
+      setDocument(updatedDocument);
+
+      setFormData({
+        title: updatedDocument.title || "",
+        content: updatedDocument.content || "",
+      });
+
+      setIsDirty(false);
+
+      setSuccess(
+        "Document saved successfully."
+      );
     } catch (error) {
-      console.error("DOCUMENT UPDATE ERROR:", error);
+      console.error(
+        "DOCUMENT UPDATE ERROR:",
+        error
+      );
 
       setError(
         error.response?.data?.message ||
@@ -105,139 +193,228 @@ const DocumentEditor = () => {
     }
   };
 
+  /*
+   * Handle back navigation
+   */
+  const handleBack = () => {
+    if (isDirty) {
+      const confirmed = window.confirm(
+        "You have unsaved changes. Are you sure you want to leave?"
+      );
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    navigate("/dashboard");
+  };
+
+  /*
+   * Loading state
+   */
   if (loading) {
     return (
-      <Box
+      <Stack
         sx={{
-          minHeight: "100vh",
-          display: "flex",
+          minHeight: "60vh",
           alignItems: "center",
           justifyContent: "center",
         }}
       >
         <CircularProgress />
-      </Box>
+      </Stack>
     );
   }
 
-  if (error && !formData.title && !formData.content) {
+  /*
+   * Document loading error
+   */
+  if (error && !document) {
     return (
-      <Box sx={{ p: 4 }}>
-        <Alert severity="error">{error}</Alert>
+      <Stack spacing={2}>
+        <Alert severity="error">
+          {error}
+        </Alert>
 
         <Button
-          sx={{ mt: 2 }}
           variant="outlined"
-          onClick={() => navigate("/dashboard")}
+          onClick={() =>
+            navigate("/dashboard")
+          }
         >
-          Back to Dashboard
+          Back to Documents
         </Button>
-      </Box>
+      </Stack>
     );
   }
 
   return (
     <Box
       sx={{
-        minHeight: "100vh",
-        p: { xs: 2, md: 4 },
+        maxWidth: 1000,
+        mx: "auto",
       }}
     >
-      <Box
-        sx={{
-          maxWidth: 900,
-          mx: "auto",
-        }}
-      >
-        <Stack spacing={3}>
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
+      <Stack spacing={3}>
+        {/* Back Navigation */}
+        <Box>
+          <Button
+            variant="text"
+            onClick={handleBack}
             sx={{
-              justifyContent: "space-between",
-              alignItems: {
-                xs: "stretch",
-                sm: "center",
-              },
-              gap: 2,
+              px: 0,
             }}
           >
-            <Button
-              variant="outlined"
-              onClick={() => navigate("/dashboard")}
-            >
-              ← Back
-            </Button>
+            ← Back to Documents
+          </Button>
+        </Box>
 
-            <Typography
-              variant="h5"
-              fontWeight={700}
-            >
-              Document Editor
-            </Typography>
-
-            <Button
-              variant="contained"
-              onClick={handleSave}
-              disabled={saving}
-            >
-              {saving ? "Saving..." : "Save"}
-            </Button>
-          </Stack>
-
-          {error && (
-            <Alert severity="error">
-              {error}
-            </Alert>
-          )}
-
-          {success && (
-            <Alert severity="success">
-              {success}
-            </Alert>
-          )}
-
-          <Box component="form" onSubmit={handleSave}>
+        {/* Editor Card */}
+        <Card
+          sx={{
+            borderRadius: 3,
+            boxShadow: 2,
+          }}
+        >
+          <CardContent
+            sx={{
+              p: {
+                xs: 2,
+                md: 4,
+              },
+            }}
+          >
             <Stack spacing={3}>
-              <TextField
-                label="Title"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                fullWidth
-                required
-              />
-
-              <TextField
-                label="Content"
-                name="content"
-                value={formData.content}
-                onChange={handleChange}
-                fullWidth
-                multiline
-                minRows={15}
-                placeholder="Start writing your document..."
-              />
-
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "flex-end",
-                }}
-              >
-                <Button
-                  type="submit"
-                  variant="contained"
-                  disabled={saving}
+              {/* Header */}
+              <Box>
+                <Typography
+                  variant="h4"
+                  fontWeight={700}
                 >
-                  {saving
-                    ? "Saving..."
-                    : "Save Document"}
-                </Button>
+                  Edit Document
+                </Typography>
+
+                <Typography
+                  color="text.secondary"
+                  sx={{
+                    mt: 1,
+                  }}
+                >
+                  Update your document and save
+                  your changes.
+                </Typography>
+              </Box>
+
+              <Divider />
+
+              {/* Error Message */}
+              {error && (
+                <Alert severity="error">
+                  {error}
+                </Alert>
+              )}
+
+              {/* Success Message */}
+              {success && (
+                <Alert severity="success">
+                  {success}
+                </Alert>
+              )}
+
+              {/* Editor Form */}
+              <Box
+                component="form"
+                onSubmit={handleSave}
+              >
+                <Stack spacing={3}>
+                  {/* Title */}
+                  <TextField
+                    label="Title"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleChange}
+                    fullWidth
+                    required
+                  />
+
+                  {/* Content */}
+                  <TextField
+                    label="Content"
+                    name="content"
+                    value={formData.content}
+                    onChange={handleChange}
+                    fullWidth
+                    multiline
+                    minRows={14}
+                    placeholder="Write your document here..."
+                  />
+
+                  {/* Editor Footer */}
+                  <Stack
+                    direction={{
+                      xs: "column",
+                      sm: "row",
+                    }}
+                    sx={{
+                      justifyContent:
+                        "space-between",
+                      alignItems: {
+                        xs: "stretch",
+                        sm: "center",
+                      },
+                      gap: 2,
+                    }}
+                  >
+                    {/* Save Status */}
+                    <Typography
+                      variant="body2"
+                      color={
+                        isDirty
+                          ? "warning.main"
+                          : "text.secondary"
+                      }
+                    >
+                      {saving
+                        ? "Saving changes..."
+                        : isDirty
+                          ? "Unsaved changes"
+                          : document?.updatedAt
+                            ? `Saved • Last updated ${new Date(
+                                document.updatedAt
+                              ).toLocaleDateString(
+                                "en-IN",
+                                {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                }
+                              )}`
+                            : "Saved"}
+                    </Typography>
+
+                    {/* Save Button */}
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      size="large"
+                      disabled={
+                        saving || !isDirty
+                      }
+                    >
+                      {saving
+                        ? "Saving..."
+                        : isDirty
+                          ? "Save Changes"
+                          : "Saved"}
+                    </Button>
+                  </Stack>
+                </Stack>
               </Box>
             </Stack>
-          </Box>
-        </Stack>
-      </Box>
+          </CardContent>
+        </Card>
+      </Stack>
     </Box>
   );
 };
