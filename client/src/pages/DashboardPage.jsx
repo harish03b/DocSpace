@@ -1,144 +1,628 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import {
   Box,
-  MenuItem,
+  Button,
+  Card,
+  CardContent,
+  CircularProgress,
   Stack,
-  TextField,
   Typography,
 } from "@mui/material";
 
-import CreateDocument from "../features/document/CreateDocument";
-import DocumentList from "../features/document/DocumentList";
-import DocumentSearch from "../features/document/DocumentSearch";
-import DocumentStats from "../features/document/DocumentStats";
+import LogoutButton from "../features/auth/components/LogoutButton";
+import { documentService } from "../features/document";
 
 const DashboardPage = () => {
-  const [documents, setDocuments] = useState([]);
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("updated");
+  const navigate = useNavigate();
 
-  const filteredDocuments = useMemo(() => {
-    const searchValue = search.trim().toLowerCase();
+  const [activeDocuments, setActiveDocuments] =
+    useState([]);
 
-    let result = documents.filter((document) => {
-      if (!searchValue) {
-        return true;
-      }
+  const [archivedDocuments, setArchivedDocuments] =
+    useState([]);
 
-      const title = document.title?.toLowerCase() || "";
-      const content = document.content?.toLowerCase() || "";
+  const [view, setView] = useState("active");
 
-      return (
-        title.includes(searchValue) ||
-        content.includes(searchValue)
+  const [loading, setLoading] = useState(true);
+
+  /*
+   * Load active and archived documents
+   * independently.
+   */
+  const fetchDocuments = async () => {
+    try {
+      setLoading(true);
+
+      const [
+        activeResponse,
+        archivedResponse,
+      ] = await Promise.all([
+        documentService.getDocuments(),
+        documentService.getArchivedDocuments(),
+      ]);
+
+      console.log(
+        "ACTIVE DOCUMENT RESPONSE:",
+        activeResponse
       );
-    });
 
-    result = [...result].sort((a, b) => {
-      if (sortBy === "title") {
-        return (a.title || "").localeCompare(
-          b.title || ""
+      console.log(
+        "ARCHIVED DOCUMENT RESPONSE:",
+        archivedResponse
+      );
+
+      const activeData =
+        activeResponse?.data?.message;
+
+      const archivedData =
+        archivedResponse?.data?.message;
+
+      setActiveDocuments(
+        Array.isArray(activeData)
+          ? activeData
+          : []
+      );
+
+      setArchivedDocuments(
+        Array.isArray(archivedData)
+          ? archivedData
+          : []
+      );
+    } catch (error) {
+      console.error(
+        "DASHBOARD DOCUMENT ERROR:",
+        error
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
+
+  /*
+   * Current document collection
+   */
+  const currentDocuments =
+    view === "active"
+      ? activeDocuments
+      : archivedDocuments;
+
+  /*
+   * Active statistics
+   */
+  const totalDocuments =
+    activeDocuments.length;
+
+  const documentsWithContent =
+    activeDocuments.filter(
+      (document) =>
+        document.content?.trim()
+    ).length;
+
+  const emptyDocuments =
+    totalDocuments -
+    documentsWithContent;
+
+  /*
+   * Archive from dashboard
+   */
+  const handleArchive = async (
+    documentId
+  ) => {
+    try {
+      await documentService.archiveDocument(
+        documentId
+      );
+
+      /*
+       * Remove from active
+       */
+      setActiveDocuments(
+        (previousDocuments) =>
+          previousDocuments.filter(
+            (document) =>
+              document._id !== documentId
+          )
+      );
+
+      /*
+       * Reload archived list so
+       * the archived document appears.
+       */
+      const response =
+        await documentService.getArchivedDocuments();
+
+      const archivedData =
+        response?.data?.message;
+
+      setArchivedDocuments(
+        Array.isArray(archivedData)
+          ? archivedData
+          : []
+      );
+    } catch (error) {
+      console.error(
+        "ARCHIVE ERROR:",
+        error
+      );
+    }
+  };
+
+  /*
+   * Restore from archived view
+   */
+  const handleRestore = async (
+    documentId
+  ) => {
+    try {
+      await documentService.restoreDocument(
+        documentId
+      );
+
+      /*
+       * Remove from archived
+       */
+      setArchivedDocuments(
+        (previousDocuments) =>
+          previousDocuments.filter(
+            (document) =>
+              document._id !== documentId
+          )
+      );
+
+      /*
+       * Reload active list so
+       * restored document appears.
+       */
+      const response =
+        await documentService.getDocuments();
+
+      const activeData =
+        response?.data?.message;
+
+      setActiveDocuments(
+        Array.isArray(activeData)
+          ? activeData
+          : []
+      );
+    } catch (error) {
+      console.error(
+        "RESTORE ERROR:",
+        error
+      );
+    }
+  };
+
+  /*
+   * Delete document
+   */
+  const handleDelete = async (
+    documentId,
+    isArchived
+  ) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to permanently delete this document?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await documentService.deleteDocument(
+        documentId
+      );
+
+      if (isArchived) {
+        setArchivedDocuments(
+          (previousDocuments) =>
+            previousDocuments.filter(
+              (document) =>
+                document._id !== documentId
+            )
+        );
+      } else {
+        setActiveDocuments(
+          (previousDocuments) =>
+            previousDocuments.filter(
+              (document) =>
+                document._id !== documentId
+            )
         );
       }
-
-      if (sortBy === "created") {
-        return (
-          new Date(b.createdAt || 0) -
-          new Date(a.createdAt || 0)
-        );
-      }
-
-      return (
-        new Date(b.updatedAt || 0) -
-        new Date(a.updatedAt || 0)
+    } catch (error) {
+      console.error(
+        "DELETE ERROR:",
+        error
       );
-    });
+    }
+  };
 
-    return result;
-  }, [documents, search, sortBy]);
+  if (loading) {
+    return (
+      <Stack
+        sx={{
+          minHeight: "60vh",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <CircularProgress />
+      </Stack>
+    );
+  }
 
   return (
-    <Stack spacing={4}>
-      <Box>
-        <Typography
-          variant="h4"
-          fontWeight={700}
-        >
-          Welcome back
-        </Typography>
-
-        <Typography
-          color="text.secondary"
-          sx={{ mt: 1 }}
-        >
-          Manage your documents from one place.
-        </Typography>
-      </Box>
-
-      <DocumentStats documents={documents} />
-
-      <CreateDocument
-        onCreated={(createdDocument) => {
-          setDocuments((previousDocuments) => [
-            createdDocument,
-            ...previousDocuments,
-          ]);
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "background.default",
+        py: 4,
+      }}
+    >
+      <Box
+        sx={{
+          maxWidth: 1200,
+          mx: "auto",
+          px: {
+            xs: 2,
+            sm: 3,
+          },
         }}
-      />
-
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        spacing={2}
       >
-        <DocumentSearch
-          search={search}
-          setSearch={setSearch}
-        />
+        <Stack spacing={4}>
+          {/* Header */}
+          <Stack
+            direction={{
+              xs: "column",
+              sm: "row",
+            }}
+            sx={{
+              justifyContent:
+                "space-between",
+              alignItems: {
+                xs: "stretch",
+                sm: "center",
+              },
+              gap: 2,
+            }}
+          >
+            <Box>
+              <Typography
+                variant="h4"
+                fontWeight={700}
+              >
+                DocSpace
+              </Typography>
 
-        <TextField
-          select
-          label="Sort by"
-          value={sortBy}
-          onChange={(event) =>
-            setSortBy(event.target.value)
-          }
-          sx={{
-            minWidth: {
-              xs: "100%",
-              md: 220,
-            },
-          }}
-        >
-          <MenuItem value="updated">
-            Recently Updated
-          </MenuItem>
+              <Typography
+                color="text.secondary"
+                sx={{ mt: 0.5 }}
+              >
+                Welcome back
+              </Typography>
 
-          <MenuItem value="created">
-            Recently Created
-          </MenuItem>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+              >
+                Manage your documents from
+                one place.
+              </Typography>
+            </Box>
 
-          <MenuItem value="title">
-            Title A-Z
-          </MenuItem>
-        </TextField>
-      </Stack>
+            <LogoutButton />
+          </Stack>
 
-      <Box>
-        <Typography
-          variant="h5"
-          fontWeight={600}
-          sx={{ mb: 2 }}
-        >
-          Your Documents
-        </Typography>
+          {/* Statistics */}
+          {view === "active" && (
+            <Stack
+              direction={{
+                xs: "column",
+                sm: "row",
+              }}
+              spacing={2}
+            >
+              <Card
+                sx={{
+                  flex: 1,
+                  borderRadius: 3,
+                }}
+              >
+                <CardContent>
+                  <Typography
+                    color="text.secondary"
+                  >
+                    Total Documents
+                  </Typography>
 
-        <DocumentList
-          documents={filteredDocuments}
-          setDocuments={setDocuments}
-        />
+                  <Typography
+                    variant="h4"
+                    fontWeight={700}
+                  >
+                    {totalDocuments}
+                  </Typography>
+                </CardContent>
+              </Card>
+
+              <Card
+                sx={{
+                  flex: 1,
+                  borderRadius: 3,
+                }}
+              >
+                <CardContent>
+                  <Typography
+                    color="text.secondary"
+                  >
+                    With Content
+                  </Typography>
+
+                  <Typography
+                    variant="h4"
+                    fontWeight={700}
+                  >
+                    {documentsWithContent}
+                  </Typography>
+                </CardContent>
+              </Card>
+
+              <Card
+                sx={{
+                  flex: 1,
+                  borderRadius: 3,
+                }}
+              >
+                <CardContent>
+                  <Typography
+                    color="text.secondary"
+                  >
+                    Empty Documents
+                  </Typography>
+
+                  <Typography
+                    variant="h4"
+                    fontWeight={700}
+                  >
+                    {emptyDocuments}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Stack>
+          )}
+
+          {/* View switch */}
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              flexWrap: "wrap",
+            }}
+          >
+            <Button
+              variant={
+                view === "active"
+                  ? "contained"
+                  : "outlined"
+              }
+              onClick={() =>
+                setView("active")
+              }
+            >
+              Active Documents
+            </Button>
+
+            <Button
+              variant={
+                view === "archived"
+                  ? "contained"
+                  : "outlined"
+              }
+              color={
+                view === "archived"
+                  ? "warning"
+                  : "primary"
+              }
+              onClick={() =>
+                setView("archived")
+              }
+            >
+              Archived Documents
+            </Button>
+          </Stack>
+
+          {/* Create */}
+          {view === "active" && (
+            <Box>
+              <Button
+                variant="contained"
+                onClick={() =>
+                  navigate(
+                    "/documents/create"
+                  )
+                }
+              >
+                Create Document
+              </Button>
+            </Box>
+          )}
+
+          {/* Section */}
+          <Box>
+            <Typography
+              variant="h5"
+              fontWeight={700}
+              sx={{
+                mb: 2,
+              }}
+            >
+              {view === "active"
+                ? "Your Documents"
+                : "Archived Documents"}
+            </Typography>
+
+            {/* Empty state */}
+            {currentDocuments.length ===
+            0 ? (
+              <Card>
+                <CardContent>
+                  <Stack
+                    spacing={1}
+                    sx={{
+                      alignItems: "center",
+                      py: 4,
+                    }}
+                  >
+                    <Typography
+                      variant="h6"
+                      fontWeight={600}
+                    >
+                      {view === "active"
+                        ? "No documents found"
+                        : "No archived documents"}
+                    </Typography>
+
+                    <Typography
+                      color="text.secondary"
+                      align="center"
+                    >
+                      {view === "active"
+                        ? "Create your first document to get started."
+                        : "Archived documents will appear here."}
+                    </Typography>
+                  </Stack>
+                </CardContent>
+              </Card>
+            ) : (
+              <Stack spacing={2}>
+                {currentDocuments.map(
+                  (document) => (
+                    <Card
+                      key={document._id}
+                      sx={{
+                        borderRadius: 3,
+                      }}
+                    >
+                      <CardContent>
+                        <Stack
+                          direction={{
+                            xs: "column",
+                            sm: "row",
+                          }}
+                          sx={{
+                            justifyContent:
+                              "space-between",
+                            alignItems: {
+                              xs: "stretch",
+                              sm: "center",
+                            },
+                            gap: 2,
+                          }}
+                        >
+                          <Box>
+                            <Typography
+                              variant="h6"
+                              fontWeight={700}
+                            >
+                              {
+                                document.title
+                              }
+                            </Typography>
+
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{
+                                mt: 0.5,
+                              }}
+                            >
+                              {document.content?.trim()
+                                ? document.content
+                                : "No content available."}
+                            </Typography>
+                          </Box>
+
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            sx={{
+                              flexWrap:
+                                "wrap",
+                            }}
+                          >
+                            {view ===
+                              "active" && (
+                              <>
+                                <Button
+                                  variant="outlined"
+                                  onClick={() =>
+                                    navigate(
+                                      `/documents/${document._id}`
+                                    )
+                                  }
+                                >
+                                  Open
+                                </Button>
+
+                                <Button
+                                  color="warning"
+                                  variant="outlined"
+                                  onClick={() =>
+                                    handleArchive(
+                                      document._id
+                                    )
+                                  }
+                                >
+                                  Archive
+                                </Button>
+                              </>
+                            )}
+
+                            {view ===
+                              "archived" && (
+                              <Button
+                                color="success"
+                                variant="outlined"
+                                onClick={() =>
+                                  handleRestore(
+                                    document._id
+                                  )
+                                }
+                              >
+                                Restore
+                              </Button>
+                            )}
+
+                            <Button
+                              color="error"
+                              variant="outlined"
+                              onClick={() =>
+                                handleDelete(
+                                  document._id,
+                                  view ===
+                                    "archived"
+                                )
+                              }
+                            >
+                              Delete
+                            </Button>
+                          </Stack>
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  )
+                )}
+              </Stack>
+            )}
+          </Box>
+        </Stack>
       </Box>
-    </Stack>
+    </Box>
   );
 };
 

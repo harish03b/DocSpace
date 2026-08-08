@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -15,49 +16,89 @@ import {
 
 import { documentService } from "./index";
 
-const DocumentList = ({ documents, setDocuments }) => {
+const DocumentList = ({
+  documents,
+  setDocuments,
+}) => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [deletingId, setDeletingId] = useState(null);
+  const [actionId, setActionId] = useState(null);
 
+  /*
+   * Fetch documents
+   */
   const fetchDocuments = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const response = await documentService.getDocuments();
+      const response =
+        await documentService.getDocuments();
 
-      console.log("DOCUMENT RESPONSE:", response);
+      console.log(
+        "DOCUMENT RESPONSE:",
+        response
+      );
 
-      const documentData = Array.isArray(response?.message)
-        ? response.message
-        : [];
+      /*
+       * Axios response structure:
+       *
+       * response
+       *   └── data
+       *       ├── success
+       *       ├── message: [documents]
+       *       ├── data: "Documents fetched successfully."
+       *       └── meta
+       */
+
+      const documentData =
+        response?.data?.message;
+
+      if (!Array.isArray(documentData)) {
+        throw new Error(
+          "Invalid document response received from server."
+        );
+      }
 
       setDocuments(documentData);
     } catch (error) {
-      console.error("DOCUMENT FETCH ERROR:", error);
+      console.error(
+        "DOCUMENT FETCH ERROR:",
+        error
+      );
 
       setError(
         error.response?.data?.message ||
           error.message ||
           "Failed to load documents."
       );
+
+      setDocuments([]);
     } finally {
       setLoading(false);
     }
   };
 
+  /*
+   * Load documents when component mounts
+   */
   useEffect(() => {
     fetchDocuments();
   }, []);
 
-  const handleDelete = async (event, documentId) => {
+  /*
+   * Archive document
+   */
+  const handleArchive = async (
+    event,
+    documentId
+  ) => {
     event.stopPropagation();
 
     const confirmed = window.confirm(
-      "Are you sure you want to delete this document?"
+      "Are you sure you want to archive this document?"
     );
 
     if (!confirmed) {
@@ -65,21 +106,89 @@ const DocumentList = ({ documents, setDocuments }) => {
     }
 
     try {
-      setDeletingId(documentId);
+      setActionId(documentId);
       setError("");
 
       const response =
-        await documentService.deleteDocument(documentId);
+        await documentService.archiveDocument(
+          documentId
+        );
 
-      console.log("DELETE DOCUMENT RESPONSE:", response);
+      console.log(
+        "ARCHIVE DOCUMENT RESPONSE:",
+        response
+      );
 
-      setDocuments((previousDocuments) =>
-        previousDocuments.filter(
-          (document) => document._id !== documentId
-        )
+      /*
+       * Remove archived document
+       * from current active list.
+       */
+      setDocuments(
+        (previousDocuments) =>
+          previousDocuments.filter(
+            (document) =>
+              document._id !== documentId
+          )
       );
     } catch (error) {
-      console.error("DELETE DOCUMENT ERROR:", error);
+      console.error(
+        "ARCHIVE DOCUMENT ERROR:",
+        error
+      );
+
+      setError(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to archive document."
+      );
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  /*
+   * Delete document
+   */
+  const handleDelete = async (
+    event,
+    documentId
+  ) => {
+    event.stopPropagation();
+
+    const confirmed = window.confirm(
+      "Are you sure you want to permanently delete this document?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setActionId(documentId);
+      setError("");
+
+      const response =
+        await documentService.deleteDocument(
+          documentId
+        );
+
+      console.log(
+        "DELETE DOCUMENT RESPONSE:",
+        response
+      );
+
+      setDocuments(
+        (previousDocuments) =>
+          previousDocuments.filter(
+            (document) =>
+              document._id !== documentId
+          )
+      );
+    } catch (error) {
+      console.error(
+        "DELETE DOCUMENT ERROR:",
+        error
+      );
 
       setError(
         error.response?.data?.message ||
@@ -87,13 +196,30 @@ const DocumentList = ({ documents, setDocuments }) => {
           "Failed to delete document."
       );
     } finally {
-      setDeletingId(null);
+      setActionId(null);
     }
   };
 
+  /*
+   * Open document
+   */
+  const handleOpen = (
+    event,
+    documentId
+  ) => {
+    event.stopPropagation();
+
+    navigate(
+      `/documents/${documentId}`
+    );
+  };
+
+  /*
+   * Content preview
+   */
   const getPreview = (content) => {
     if (!content?.trim()) {
-      return "No content yet.";
+      return "No content available.";
     }
 
     const cleanedContent = content
@@ -104,9 +230,15 @@ const DocumentList = ({ documents, setDocuments }) => {
       return cleanedContent;
     }
 
-    return `${cleanedContent.substring(0, 140)}...`;
+    return `${cleanedContent.substring(
+      0,
+      140
+    )}...`;
   };
 
+  /*
+   * Format date
+   */
   const formatDate = (date) => {
     if (!date) {
       return "Date unavailable";
@@ -118,13 +250,19 @@ const DocumentList = ({ documents, setDocuments }) => {
       return "Date unavailable";
     }
 
-    return parsedDate.toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
+    return parsedDate.toLocaleDateString(
+      "en-IN",
+      {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }
+    );
   };
 
+  /*
+   * Loading
+   */
   if (loading) {
     return (
       <Stack
@@ -141,12 +279,14 @@ const DocumentList = ({ documents, setDocuments }) => {
 
   return (
     <Stack spacing={2}>
+      {/* Error */}
       {error && (
         <Alert severity="error">
           {error}
         </Alert>
       )}
 
+      {/* Empty state */}
       {documents.length === 0 ? (
         <Card>
           <CardContent>
@@ -168,7 +308,8 @@ const DocumentList = ({ documents, setDocuments }) => {
                 color="text.secondary"
                 align="center"
               >
-                Create your first document to get started.
+                Create your first document
+                to get started.
               </Typography>
             </Stack>
           </CardContent>
@@ -178,21 +319,26 @@ const DocumentList = ({ documents, setDocuments }) => {
           <Card
             key={document._id}
             onClick={() =>
-              navigate(`/documents/${document._id}`)
+              navigate(
+                `/documents/${document._id}`
+              )
             }
             sx={{
               cursor: "pointer",
               borderRadius: 3,
               transition:
                 "transform 0.2s, box-shadow 0.2s",
+
               "&:hover": {
-                transform: "translateY(-2px)",
+                transform:
+                  "translateY(-2px)",
                 boxShadow: 4,
               },
             }}
           >
             <CardContent sx={{ p: 3 }}>
               <Stack spacing={2}>
+                {/* Header */}
                 <Stack
                   direction={{
                     xs: "column",
@@ -201,21 +347,30 @@ const DocumentList = ({ documents, setDocuments }) => {
                   sx={{
                     justifyContent:
                       "space-between",
+
                     alignItems: {
                       xs: "stretch",
                       sm: "flex-start",
                     },
+
                     gap: 2,
                   }}
                 >
-                  <Box sx={{ minWidth: 0 }}>
+                  {/* Document information */}
+                  <Box
+                    sx={{
+                      minWidth: 0,
+                    }}
+                  >
                     <Typography
                       variant="h6"
                       fontWeight={700}
                       sx={{
                         overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
+                        textOverflow:
+                          "ellipsis",
+                        whiteSpace:
+                          "nowrap",
                       }}
                     >
                       {document.title}
@@ -229,28 +384,53 @@ const DocumentList = ({ documents, setDocuments }) => {
                         lineHeight: 1.6,
                       }}
                     >
-                      {getPreview(document.content)}
+                      {getPreview(
+                        document.content
+                      )}
                     </Typography>
                   </Box>
 
+                  {/* Actions */}
                   <Stack
                     direction="row"
                     spacing={1}
                     sx={{
                       flexShrink: 0,
+                      flexWrap: "wrap",
                     }}
                   >
                     <Button
                       variant="outlined"
                       size="small"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        navigate(
-                          `/documents/${document._id}`
-                        );
-                      }}
+                      onClick={(event) =>
+                        handleOpen(
+                          event,
+                          document._id
+                        )
+                      }
                     >
                       Open
+                    </Button>
+
+                    <Button
+                      color="warning"
+                      variant="outlined"
+                      size="small"
+                      disabled={
+                        actionId ===
+                        document._id
+                      }
+                      onClick={(event) =>
+                        handleArchive(
+                          event,
+                          document._id
+                        )
+                      }
+                    >
+                      {actionId ===
+                      document._id
+                        ? "Working..."
+                        : "Archive"}
                     </Button>
 
                     <Button
@@ -258,7 +438,8 @@ const DocumentList = ({ documents, setDocuments }) => {
                       variant="outlined"
                       size="small"
                       disabled={
-                        deletingId === document._id
+                        actionId ===
+                        document._id
                       }
                       onClick={(event) =>
                         handleDelete(
@@ -267,13 +448,15 @@ const DocumentList = ({ documents, setDocuments }) => {
                         )
                       }
                     >
-                      {deletingId === document._id
-                        ? "Deleting..."
+                      {actionId ===
+                      document._id
+                        ? "Working..."
                         : "Delete"}
                     </Button>
                   </Stack>
                 </Stack>
 
+                {/* Metadata */}
                 <Stack
                   direction="row"
                   spacing={1}

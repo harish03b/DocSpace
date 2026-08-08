@@ -1,35 +1,47 @@
-import {
-  getDocumentsApi,
-  getDocumentByIdApi,
-  createDocumentApi,
-  updateDocumentApi,
-  deleteDocumentApi,
-} from "./document.api";
+import documentApi from "./document.api.js";
 
 class DocumentService {
+  async createDocument(data) {
+    return await documentApi.createDocument(data);
+  }
+
   async getDocuments() {
-    const response = await getDocumentsApi();
-    return response.data;
+    return await documentApi.getDocuments();
+  }
+
+  async getArchivedDocuments() {
+    return await documentApi.getArchivedDocuments();
   }
 
   async getDocumentById(documentId) {
-    const response = await getDocumentByIdApi(documentId);
-    return response.data;
-  }
-
-  async createDocument(data) {
-    const response = await createDocumentApi(data);
-    return response.data;
+    return await documentApi.getDocumentById(
+      documentId
+    );
   }
 
   async updateDocument(documentId, data) {
-    const response = await updateDocumentApi(documentId, data);
-    return response.data;
+    return await documentApi.updateDocument(
+      documentId,
+      data
+    );
   }
 
   async deleteDocument(documentId) {
-    const response = await deleteDocumentApi(documentId);
-    return response.data;
+    return await documentApi.deleteDocument(
+      documentId
+    );
+  }
+
+  async archiveDocument(documentId) {
+    return await documentApi.archiveDocument(
+      documentId
+    );
+  }
+
+  async restoreDocument(documentId) {
+    return await documentApi.restoreDocument(
+      documentId
+    );
   }
 }
 

@@ -54,10 +54,28 @@ const DocumentEditor = () => {
           response
         );
 
-        const documentData = response?.message;
+        /*
+         * Axios response structure:
+         *
+         * response
+         *   └── data
+         *       ├── success: true
+         *       ├── message: { document }
+         *       ├── data: "Document fetched successfully."
+         *       └── meta: null
+         *
+         * Therefore the actual document is:
+         *
+         * response.data.message
+         */
+
+        const documentData =
+          response?.data?.message;
 
         if (!documentData) {
-          throw new Error("Document not found.");
+          throw new Error(
+            "Document not found."
+          );
         }
 
         setDocument(documentData);
@@ -84,12 +102,15 @@ const DocumentEditor = () => {
       }
     };
 
-    fetchDocument();
+    if (id) {
+      fetchDocument();
+    }
   }, [id]);
 
   /*
-   * Protect against browser refresh / tab close
-   * when there are unsaved changes.
+   * Protect against browser refresh
+   * or closing the tab when changes
+   * have not been saved.
    */
   useEffect(() => {
     const handleBeforeUnload = (event) => {
@@ -98,7 +119,6 @@ const DocumentEditor = () => {
       }
 
       event.preventDefault();
-
       event.returnValue = "";
     };
 
@@ -116,7 +136,7 @@ const DocumentEditor = () => {
   }, [isDirty]);
 
   /*
-   * Handle form changes
+   * Handle title/content changes
    */
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -157,7 +177,13 @@ const DocumentEditor = () => {
         response
       );
 
-      const updatedDocument = response?.message;
+      /*
+       * Updated document is also inside:
+       *
+       * response.data.message
+       */
+      const updatedDocument =
+        response?.data?.message;
 
       if (!updatedDocument) {
         throw new Error(
@@ -169,7 +195,8 @@ const DocumentEditor = () => {
 
       setFormData({
         title: updatedDocument.title || "",
-        content: updatedDocument.content || "",
+        content:
+          updatedDocument.content || "",
       });
 
       setIsDirty(false);
@@ -194,7 +221,7 @@ const DocumentEditor = () => {
   };
 
   /*
-   * Handle back navigation
+   * Back to dashboard
    */
   const handleBack = () => {
     if (isDirty) {
@@ -228,7 +255,7 @@ const DocumentEditor = () => {
   }
 
   /*
-   * Document loading error
+   * Error state
    */
   if (error && !document) {
     return (
@@ -257,7 +284,7 @@ const DocumentEditor = () => {
       }}
     >
       <Stack spacing={3}>
-        {/* Back Navigation */}
+        {/* Back Button */}
         <Box>
           <Button
             variant="text"
@@ -270,7 +297,7 @@ const DocumentEditor = () => {
           </Button>
         </Box>
 
-        {/* Editor Card */}
+        {/* Editor */}
         <Card
           sx={{
             borderRadius: 3,
@@ -308,21 +335,21 @@ const DocumentEditor = () => {
 
               <Divider />
 
-              {/* Error Message */}
+              {/* Error */}
               {error && (
                 <Alert severity="error">
                   {error}
                 </Alert>
               )}
 
-              {/* Success Message */}
+              {/* Success */}
               {success && (
                 <Alert severity="success">
                   {success}
                 </Alert>
               )}
 
-              {/* Editor Form */}
+              {/* Form */}
               <Box
                 component="form"
                 onSubmit={handleSave}
@@ -350,7 +377,7 @@ const DocumentEditor = () => {
                     placeholder="Write your document here..."
                   />
 
-                  {/* Editor Footer */}
+                  {/* Footer */}
                   <Stack
                     direction={{
                       xs: "column",
@@ -366,7 +393,7 @@ const DocumentEditor = () => {
                       gap: 2,
                     }}
                   >
-                    {/* Save Status */}
+                    {/* Save status */}
                     <Typography
                       variant="body2"
                       color={
@@ -393,7 +420,7 @@ const DocumentEditor = () => {
                             : "Saved"}
                     </Typography>
 
-                    {/* Save Button */}
+                    {/* Save button */}
                     <Button
                       type="submit"
                       variant="contained"
