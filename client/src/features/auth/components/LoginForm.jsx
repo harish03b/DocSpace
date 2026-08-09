@@ -1,5 +1,6 @@
+
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import {
   Alert,
@@ -28,7 +29,10 @@ const LoginForm = () => {
   const [error, setError] = useState("");
 
   const handleChange = (event) => {
-    const { name, value } = event.target;
+    const {
+      name,
+      value,
+    } = event.target;
 
     setFormData((previousData) => ({
       ...previousData,
@@ -43,27 +47,37 @@ const LoginForm = () => {
       setLoading(true);
       setError("");
 
-      const response = await authService.login(formData);
+      const response =
+        await authService.login(formData);
 
       // Temporary verification of the backend response.
       // Do not share the actual token if it appears here.
-      console.log("LOGIN RESPONSE:", response);
+      console.log(
+        "LOGIN RESPONSE:",
+        response
+      );
 
-      const token = response?.message?.token;
+      const token =
+        response?.message?.token;
 
       if (!token) {
-        throw new Error("Login succeeded but no token was returned.");
+        throw new Error(
+          "Login succeeded but no token was returned."
+        );
       }
 
       setToken(token);
 
       navigate("/dashboard");
     } catch (error) {
-      console.error("LOGIN ERROR:", error);
+      console.error(
+        "LOGIN ERROR:",
+        error
+      );
 
       setError(
-        error.response?.data?.message ||
-          error.message ||
+        error?.response?.data?.message ||
+          error?.message ||
           "Login failed."
       );
     } finally {
@@ -88,10 +102,22 @@ const LoginForm = () => {
             boxShadow: 5,
           }}
         >
-          <CardContent sx={{ p: 5 }}>
-            <form onSubmit={handleSubmit}>
+          <CardContent
+            sx={{
+              p: 5,
+            }}
+          >
+            <Box
+              component="form"
+              onSubmit={handleSubmit}
+            >
               <Stack spacing={3}>
-                <Box sx={{ textAlign: "center" }}>
+                {/* Header */}
+                <Box
+                  sx={{
+                    textAlign: "center",
+                  }}
+                >
                   <Typography
                     variant="h4"
                     fontWeight={700}
@@ -99,17 +125,24 @@ const LoginForm = () => {
                     DocSpace
                   </Typography>
 
-                  <Typography color="text.secondary">
+                  <Typography
+                    color="text.secondary"
+                    sx={{
+                      mt: 1,
+                    }}
+                  >
                     Welcome Back
                   </Typography>
                 </Box>
 
+                {/* Error */}
                 {error && (
                   <Alert severity="error">
                     {error}
                   </Alert>
                 )}
 
+                {/* Email */}
                 <TextField
                   label="Email"
                   name="email"
@@ -118,8 +151,11 @@ const LoginForm = () => {
                   onChange={handleChange}
                   fullWidth
                   required
+                  autoComplete="email"
+                  disabled={loading}
                 />
 
+                {/* Password */}
                 <TextField
                   label="Password"
                   name="password"
@@ -128,8 +164,11 @@ const LoginForm = () => {
                   onChange={handleChange}
                   fullWidth
                   required
+                  autoComplete="current-password"
+                  disabled={loading}
                 />
 
+                {/* Login */}
                 <Button
                   type="submit"
                   variant="contained"
@@ -137,17 +176,31 @@ const LoginForm = () => {
                   fullWidth
                   disabled={loading}
                 >
-                  {loading ? "Logging in..." : "Login"}
+                  {loading
+                    ? "Logging in..."
+                    : "Login"}
                 </Button>
 
+                {/* Register Link */}
                 <Typography
-                  sx={{ textAlign: "center" }}
+                  sx={{
+                    textAlign: "center",
+                  }}
                   color="text.secondary"
                 >
-                  Don't have an account?
+                  Don't have an account?{" "}
+                  <Link
+                    to="/register"
+                    style={{
+                      fontWeight: 600,
+                      textDecoration: "none",
+                    }}
+                  >
+                    Register
+                  </Link>
                 </Typography>
               </Stack>
-            </form>
+            </Box>
           </CardContent>
         </Card>
       </Box>
@@ -156,3 +209,4 @@ const LoginForm = () => {
 };
 
 export default LoginForm;
+

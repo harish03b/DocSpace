@@ -2,7 +2,9 @@ import documentApi from "./document.api.js";
 
 class DocumentService {
   async createDocument(data) {
-    return await documentApi.createDocument(data);
+    return await documentApi.createDocument(
+      data
+    );
   }
 
   async getDocuments() {
@@ -13,13 +15,22 @@ class DocumentService {
     return await documentApi.getArchivedDocuments();
   }
 
+  async searchDocuments(query) {
+    return await documentApi.searchDocuments(
+      query
+    );
+  }
+
   async getDocumentById(documentId) {
     return await documentApi.getDocumentById(
       documentId
     );
   }
 
-  async updateDocument(documentId, data) {
+  async updateDocument(
+    documentId,
+    data
+  ) {
     return await documentApi.updateDocument(
       documentId,
       data

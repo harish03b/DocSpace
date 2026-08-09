@@ -1,13 +1,26 @@
+
 import { ApiResponse } from "../../shared/index.js";
+
 import documentService from "./document.service.js";
 
 class DocumentController {
-  async create(req, res, next) {
+  /*
+   * =========================================================
+   * CREATE
+   * =========================================================
+   */
+
+  async create(
+    req,
+    res,
+    next
+  ) {
     try {
-      const document = await documentService.createDocument(
-        req.body,
-        req.user.id
-      );
+      const document =
+        await documentService.createDocument(
+          req.body,
+          req.user.id
+        );
 
       return ApiResponse.success(
         res,
@@ -19,9 +32,22 @@ class DocumentController {
     }
   }
 
-  async getAll(req, res, next) {
+  /*
+   * =========================================================
+   * GET ACTIVE DOCUMENTS
+   * =========================================================
+   */
+
+  async getAll(
+    req,
+    res,
+    next
+  ) {
     try {
-      const documents = await documentService.getUserDocuments(req.user.id);
+      const documents =
+        await documentService.getUserDocuments(
+          req.user.id
+        );
 
       return ApiResponse.success(
         res,
@@ -33,11 +59,50 @@ class DocumentController {
     }
   }
 
-  async getById(req, res, next) {
+  /*
+   * =========================================================
+   * GET ARCHIVED DOCUMENTS
+   * =========================================================
+   */
+
+  async getArchived(
+    req,
+    res,
+    next
+  ) {
     try {
-      const document = await documentService.getDocumentById(
-        req.params.id
+      const documents =
+        await documentService.getArchivedDocuments(
+          req.user.id
+        );
+
+      return ApiResponse.success(
+        res,
+        documents,
+        "Archived documents fetched successfully."
       );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /*
+   * =========================================================
+   * GET SINGLE DOCUMENT
+   * =========================================================
+   */
+
+  async getById(
+    req,
+    res,
+    next
+  ) {
+    try {
+      const document =
+        await documentService.getDocumentById(
+          req.params.id,
+          req.user.id
+        );
 
       return ApiResponse.success(
         res,
@@ -49,12 +114,24 @@ class DocumentController {
     }
   }
 
-  async update(req, res, next) {
+  /*
+   * =========================================================
+   * UPDATE DOCUMENT
+   * =========================================================
+   */
+
+  async update(
+    req,
+    res,
+    next
+  ) {
     try {
-      const document = await documentService.updateDocument(
-        req.params.id,
-        req.body
-      );
+      const document =
+        await documentService.updateDocument(
+          req.params.id,
+          req.body,
+          req.user.id
+        );
 
       return ApiResponse.success(
         res,
@@ -66,9 +143,22 @@ class DocumentController {
     }
   }
 
-  async delete(req, res, next) {
+  /*
+   * =========================================================
+   * DELETE DOCUMENT
+   * =========================================================
+   */
+
+  async delete(
+    req,
+    res,
+    next
+  ) {
     try {
-      await documentService.deleteDocument(req.params.id);
+      await documentService.deleteDocument(
+        req.params.id,
+        req.user.id
+      );
 
       return ApiResponse.success(
         res,
@@ -79,6 +169,63 @@ class DocumentController {
       next(error);
     }
   }
+
+  /*
+   * =========================================================
+   * ARCHIVE DOCUMENT
+   * =========================================================
+   */
+
+  async archive(
+    req,
+    res,
+    next
+  ) {
+    try {
+      const document =
+        await documentService.archiveDocument(
+          req.params.id,
+          req.user.id
+        );
+
+      return ApiResponse.success(
+        res,
+        document,
+        "Document archived successfully."
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /*
+   * =========================================================
+   * RESTORE DOCUMENT
+   * =========================================================
+   */
+
+  async restore(
+    req,
+    res,
+    next
+  ) {
+    try {
+      const document =
+        await documentService.restoreDocument(
+          req.params.id,
+          req.user.id
+        );
+
+      return ApiResponse.success(
+        res,
+        document,
+        "Document restored successfully."
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new DocumentController();
+
